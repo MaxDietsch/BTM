@@ -1,0 +1,267 @@
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    height: 100vh;
+    background-color: #fff;
+    font-family: Arial, sans-serif;
+    color: #000;
+}
+
+.container {
+    text-align: center;
+    width: 60%;
+    max-width: 1200px;
+    position: absolute;
+    height: 100%;
+}
+
+.header {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 5rem; 
+}
+
+.heading {
+    position: absolute;
+    top: calc(5% + 5rem); 
+    width: 100%;
+    text-align: center;
+    margin-top: 0; 
+}
+
+.title {
+    margin: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 5rem;
+}
+
+.menu-icon {
+    font-size: 5rem;
+    cursor: pointer;
+    position: absolute;
+    right: 0; 
+    top: 0;
+}
+
+.menu-icon:hover {
+    cursor: pointer;
+}
+
+h1 {
+    font-size: 3rem;
+    position: absolute;
+    top:45%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.buttons {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    width: 90%;
+    gap: 10px;
+    position: absolute;
+    top: calc(5% + 5rem + 5rem + 2rem);
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+
+.btn {
+    border: 2px solid #000;
+    color: #000;
+    text-decoration: none;
+    font-size: 2rem;
+    background-color: white;
+    transition: background-color 0.3s, color 0.3s;
+    margin: 5px;
+    padding: 5px;
+}
+
+.btn:hover {
+    background-color: #000;
+    color: #fff;
+}
+
+.content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+}
+
+.dropdown {
+    margin-bottom: 20px;
+    font-size: 3rem;
+    padding: 10px;
+    width: 90%;
+    max-width: 400px;
+}
+
+.gray-option {
+    color: gray;
+}
+
+
+.menu-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #f8f8f8;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    padding: 10px;
+}
+
+.menu-content a {
+    color: black;
+    text-decoration: none;
+    display: block;
+    padding: 10px 20px;
+}
+
+.menu-content a:hover {
+    background-color: #ddd;
+}
+
+.show {
+    display: block;
+}
+
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 1; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0, 0, 0, 0.4); 
+    padding-top: 60px; 
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto; 
+    padding: 20px;
+    border: 1px solid #888;
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Shadow effect */
+    width: 80%; 
+    max-width: 500px; 
+    text-align: left;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Style for the form elements */
+.modal-content form {
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-content form label {
+    margin-top: 10px;
+    font-size: 1.2rem;
+}
+
+.modal-content form input {
+    margin-top: 5px;
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px; /* Rounded corners */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* Inner shadow */
+}
+
+.modal-content form input:focus {
+    outline: none;
+    border-color: #007BFF; /* Highlight border on focus */
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Outer shadow on focus */
+}
+
+.modal-content form button {
+    margin-top: 20px;
+    padding: 10px;
+    font-size: 1.2rem;
+    background-color: #007BFF;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.modal-content form button:hover {
+    background-color: #0056b3;
+}
+
+/* Existing responsive styles... */
+
+
+/* Media Queries for Responsiveness */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 3rem;
+    }
+
+    .btn {
+        font-size: 1.5rem;
+    }
+
+    .menu-icon {
+        font-size: 5rem; /* Adjust size for smaller screens if needed */
+    }
+
+    .container {
+        width: 90%;
+    }
+
+    .dropdown {
+        font-size: 1.25rem;
+        width: 90%;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 3rem;
+    }
+
+    .menu-icon {
+        font-size: 5rem; /* Adjust size for smaller screens if needed */
+    }
+
+    .container {
+        width: 90%;
+    }
+
+    .btn {
+        font-size: 1.25rem;
+        padding: 6px 12px;
+    }
+
+    .dropdown {
+        font-size: 1rem;
+        width: 90%;
+    }
+}

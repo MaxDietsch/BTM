@@ -34,7 +34,7 @@ body {
 
 .title {
     margin: 0;
-    position: relative;
+    position:relative;
     left: 50%;
     transform: translateX(-50%);
     font-size: 5rem;
@@ -51,16 +51,7 @@ body {
     cursor: pointer;
 }
 
-
-h1 {
-    font-size: 3rem;
-    position: absolute;
-    top:45%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.login-form {
+.registration-form {
     width: 90%;
     border: 3px solid #000;
     padding: 3%;
@@ -70,10 +61,9 @@ h1 {
     top: calc(5% + 5rem + 5rem + 2%);
     left: 50%;
     transform: translate(-50%, 0);
-
 }
 
-.login-form h2 {
+.registration-form h2 {
     margin-bottom: 20px;
 }
 
@@ -113,6 +103,33 @@ h1 {
     color: white;
 }
 
+.menu-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #f8f8f8;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    padding: 10px;
+}
+
+.menu-content a {
+    color: black;
+    text-decoration: none;
+    display: block;
+    padding: 10px 20px;
+}
+
+.menu-content a:hover {
+    background-color: #ddd;
+}
+
+.show {
+    display: block;
+}
+
+
 /* Media Queries for Responsiveness */
 @media (max-width: 768px) {
     .menu-icon {
@@ -127,9 +144,7 @@ h1 {
     .menu-icon {
         font-size: 5rem;
     }
-
     .container {
         width: 90%;
     }
-    
 }

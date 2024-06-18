@@ -12,11 +12,14 @@
             <div class="menu-icon" id="menu-icon">
                 &#9776;
             </div>
+            <div class="menu-content">
+                <a href="../landing_page.html" id="home">Home</a>
+            </div>
         </div>
         <div class = "heading">
             <h1 class="title">BTM</h1>
         </div>
-        <div class="login-form">
+        <div class="login-form" action="/login" method="POST">
             <h2>Login</h2>
             <form>
                 <div class="form-group">
@@ -27,10 +30,10 @@
                     <label for="password">Password:</label>
                     <input type="password" id="password" name="password" required>
                 </div>
-                <button type="submit" class="btn">Log In</button>
+                <button type="submit" class="btn" id="login-button">Log In</button>
             </form>
         </div>
     </div>
-
+    <script src="../js/login_page.js"></script>
 </body>
 </html>
