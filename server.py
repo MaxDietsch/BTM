@@ -1,165 +1,16 @@
 import http.server
 import socketserver
 import json
-import sqlite3
+
 from threading import Lock
 import uuid
-from typing import List
-from datetime import datetime
+from db_handler import DatabaseHandler
+from  stock_api import StockAPI
 
 PORT = 8000
 DIRECTORY = "./frontend"  # The directory where your HTML and other static files are located
 IP_ADDRESS = "192.168.178.85"
 DB_NAME = "database/btm.db"
-
-class DatabaseHandler:
-    def __init__(self, db_name):
-        self.database_connection = sqlite3.connect(db_name, check_same_thread = False)
-    
-    def get_user_games(self, user_id: int):
-        try:
-            cursor = self.database_connection.cursor()
-            cursor.execute('''
-                SELECT Games.name
-                FROM Games
-                JOIN Portfolios ON Games.id = Portfolios.game_id
-                WHERE Portfolios.user_id = ?
-                ''', (user_id,))
-            games = cursor.fetchall()
-            games_list = [{"id": idx + 1, "name": game[0]} for idx, game in enumerate(games)]
-            return games_list
-        except sqlite3.Error as e:
-            print(f"Error fetching games for user: {e}")
-            return []
-    
-    def join_game(self, user_id: int, name: str, password: str) -> str:
-        try:
-            cursor = self.database_connection.cursor()
-            cursor.execute('SELECT id, password FROM Games WHERE name = ?', (name,))
-            result = cursor.fetchone()
-            if not result:
-                return 'Game not found'
-            
-            game_id, stored_password = result
-            if stored_password != password:
-                return 'Incorrect password'
-
-            cursor.execute('SELECT id FROM Portfolios WHERE user_id = ? AND game_id = ?', (user_id, game_id))
-            result = cursor.fetchone()
-            if result:
-                return 'Already joined'
-
-            cursor.execute('INSERT INTO Portfolios (user_id, game_id, balance, current_balance) VALUES (?, ?, ?, ?)',
-                           (user_id, game_id, 0, 0))
-            self.database_connection.commit()
-            return 'Joined successfully'
-        except sqlite3.Error as e:
-            print(f"Error joining game: {e}")
-            return 'Error'
-
-    def create_game(self, user_id: int, name: str, password: str, start_capital: float, tax: float, paycheck_amount: float, paycheck_frequency: str) -> str:
-        if not (tax >= 0 and tax < 100 and start_capital >= 0 and paycheck_amount >= 0 and paycheck_frequency.isdigit()):
-            return 'Invalid parameters'
-
-        start_date = datetime.now().date()
-        last_update = start_date
-
-        try:
-            cursor = self.database_connection.cursor()
-            cursor.execute('SELECT id FROM Games WHERE name = ?', (name,))
-            if cursor.fetchone():
-                return 'Game already exists'
-
-            cursor.execute('''INSERT INTO Games (name, password, start_date, last_update, start_capital, tax, paycheck_amount, paycheck_frequency)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                           (name, password, start_date, last_update, start_capital, tax, paycheck_amount, paycheck_frequency))
-            self.database_connection.commit()
-
-            game_id = cursor.lastrowid
-
-            cursor.execute('''INSERT INTO Portfolios (user_id, game_id, balance, current_balance)
-                              VALUES (?, ?, ?, ?)''',
-                           (user_id, game_id, start_capital, start_capital))
-            self.database_connection.commit()
-
-            return 'Game created successfully'
-        except sqlite3.Error as e:
-            print(f"Error creating game: {e}")
-            return 'Error creating game'
-
-
-    def get_user_id(self, token: str) -> int:
-        try:
-            cursor = self.database_connection.cursor()
-            cursor.execute('SELECT id FROM Users WHERE token = ?', (token,))
-            id = cursor.fetchone()
-            return id[0]
-        except sqlite3.Error as e:
-            print(f"Error fetching users: {e}")
-            return None
-
-    
-    def get_user_password(self, username: str) -> str:
-        try:
-            cursor = self.database_connection.cursor()
-            cursor.execute('SELECT password FROM Users WHERE username = ?', (username,))
-            password = cursor.fetchone()
-            return password[0]
-        except sqlite3.Error as e:
-            print(f"Error fetching users: {e}")
-            return None
-
-
-    def get_user_token(self, username: str) -> str:
-        try:
-            cursor = self.database_connection.cursor()
-            cursor.execute('SELECT token FROM Users WHERE username = ?', (username,))
-            user = cursor.fetchone()
-            return user[0]
-        except sqlite3.Error as e:
-            print(f"Error fetching users: {e}")
-            return None
-
-
-    def store_user(self, username: str, password: str, token: str) -> str:
-        try:
-            cursor = self.database_connection.cursor()
-            cursor.execute('SELECT id FROM Users WHERE username = ?', (username,))
-            if cursor.fetchone():
-                return 'User already exists'
-
-            cursor.execute('INSERT INTO Users (username, password, token) VALUES (?, ?, ?)', (username, password, token))
-            self.database_connection.commit()
-            return 'User created successfully'
-        except sqlite3.Error as e:
-            print(f"Error storing user: {e}")
-            return 'Error storing user'
-    
-
-    def get_all_users(self) -> List[str]:
-        try:
-            cursor = self.database_connection.cursor()
-            cursor.execute('SELECT username FROM Users')
-            users = cursor.fetchall()
-            return users
-        except sqlite3.Error as e:
-            print(f"Error fetching users: {e}")
-            return []
-    
-    def get_all_games(self) -> List[str]:
-        try:
-            cursor = self.database_connection.cursor()
-            cursor.execute('SELECT name FROM Games')
-            games = cursor.fetchall()
-            return games
-        except sqlite3.Error as e:
-            print(f"Error fetching users: {e}")
-            return []
-
-
-
-
-
 
 
 class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
@@ -167,6 +18,7 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
         self.db_handler = DatabaseHandler(DB_NAME)
+        self.stock_market = StockAPI()
         super().__init__(*args, directory=DIRECTORY, **kwargs)
 
     def do_GET(self):
@@ -186,9 +38,67 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
             self.handle_game_creation()
         elif self.path == '/join-game':
             self.handle_game_join()
+        elif self.path == '/user-info':
+            self.handle_user_info()
         else:
             self.send_response(404)
             self.end_headers()
+
+    def handle_user_info(self) -> None:
+        auth_header = self.headers.get('Authorization')
+        token = None
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split("Bearer ")[-1]
+        
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        data = json.loads(post_data)
+
+        if not token:
+            self.send_response(401)
+            self.end_headers()
+            self.wfile.write(b'Unauthorized')
+            return
+        
+        user_id = self.db_handler.get_user_id(token)
+        if user_id is None:
+            self.send_response(401)
+            self.end_headers()
+            self.wfile.write(b'Unauthorized')
+            return
+        
+        username = self.db_handler.get_user_name(token)
+        liquid_balance = self.db_handler.get_user_liquid_cash(token)
+        game_name = data.get('game_name')
+        game_id = self.db_handler.get_game_id(game_name)
+        stocks = self.db_handler.get_user_stocks(token, game_id)
+        print(f"Get user items of {token} and Game: {game_name}")
+
+        stocklist = []
+        for stock in stocks: 
+            name, bought, value = stock
+            current_price = self.stock_market.get_stock_price(name)
+            if current_price is None:
+                continue
+            performance = current_price / bought
+            current_val = performance * value
+            gain = current_val - value
+            stocklist.append({'name': name, 
+                              'current_price': current_price,
+                              'performance': performance,
+                              'current_val': current_val,
+                              'gain': gain})
+            
+        total_balance = sum(item['current_val'] for item in stocklist) + liquid_balance
+        self.send_response(200)  
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        response = {'username': username,
+                    'liquid_cash': liquid_balance,
+                    'total_balance': total_balance,
+                    'stocklist': stocklist}
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+
 
     def handle_register(self) -> None:
         # Determine the length of the data
@@ -389,12 +299,10 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
 
 
 
-    
-
-
-
 Handler = BTM_BackEnd
 
 with socketserver.TCPServer((IP_ADDRESS, PORT), Handler) as httpd:
     print(f"Serving at port {PORT}")
     httpd.serve_forever()
+
+

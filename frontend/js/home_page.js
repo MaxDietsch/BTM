@@ -96,6 +96,8 @@ document.addEventListener('DOMContentLoaded', function() {
             createGameModal.style.display = 'none';
             document.getElementById('create-game-form').reset();
 
+            window.location.href = `../html/dashboard.html?Game=${encodeURIComponent(gameName)}`;
+
         } catch (error) {
             console.error('Error creating game:', error);
         }
@@ -161,6 +163,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Close the modal and reset the form
             joinGameModal.style.display = 'none';
             document.getElementById('join-game-form').reset();
+            
+            window.location.href = `../html/dashboard.html?Game=${encodeURIComponent(gameName)}`;
+
 
         } catch (error) {
             console.error('Error creating game:', error);
@@ -170,9 +175,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('select-item-btn').addEventListener('click', function() {
         const dropdown = document.getElementById('dropdown');
-        const selectedItem = dropdown.options[dropdown.selectedIndex].value;
+        const selectedItem = dropdown.options[dropdown.selectedIndex].textContent;
+
+        window.location.href = `../html/dashboard.html?Game=${encodeURIComponent(selectedItem)}`;
         console.log('Selected item:', selectedItem);
     });
+
+
+
 
     menuIcon.addEventListener('click', function() {
         menuContent.classList.toggle('show');

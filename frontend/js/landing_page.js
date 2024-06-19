@@ -20,11 +20,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const newButton = document.createElement('button');
         newButton.id = 'new-button';
         newButton.className = 'btn';
-        newButton.style.backgroundColor = 'white';
-        newButton.textContent = 'Go to Dashboard';
+        newButton.textContent = 'Go to Home';
 
         newButton.addEventListener('click', function() {
-            window.location.href = '../html/dashboard.html';
+            window.location.href = '../html/home_page.html';
         });
         buttonsDiv.appendChild(newButton);
 
