@@ -83,6 +83,17 @@ class DatabaseHandler:
             return 'Error creating game'
 
 
+    def valid_token(self, token) -> bool: 
+        try:
+            cursor = self.database_connection.cursor()
+            cursor.execute('SELECT 1 FROM Users WHERE token = ?', (token,))
+            result = cursor.fetchone()
+            return result is not None
+        except sqlite3.Error as e:
+            print(f"Error validating token: {e}")
+            return False
+
+
     def get_user_id(self, token: str) -> int:
         try:
             cursor = self.database_connection.cursor()
@@ -176,7 +187,7 @@ class DatabaseHandler:
                 liquid_cash = result[0]
                 return liquid_cash
             else:
-                return None
+                return 0
         except sqlite3.Error as e:
             print(f"Error fetching user liquid cash: {e}")
             return None
@@ -197,6 +208,106 @@ class DatabaseHandler:
         except sqlite3.Error as e:
             print(f"Error fetching user stocks: {e}")
             return None
+    
+    def get_user_investment_in_stock(self, token: str, game_id: int, stock_name: str) -> float:
+        try:
+            cursor = self.database_connection.cursor()
+            query = '''
+            SELECT SUM(s.value)
+            FROM Users u
+            JOIN Portfolios p ON u.id = p.user_id
+            JOIN Stocks s ON p.id = s.portfolio_id
+            WHERE u.token = ? AND p.game_id = ? AND s.name = ?;
+            '''
+            cursor.execute(query, (token, game_id, stock_name))
+            total_investment = cursor.fetchone()[0]
+            return total_investment if total_investment is not None else 0.0
+        except sqlite3.Error as e:
+            print(f"Error fetching user investment in stock: {e}")
+            return None
+        
+
+    def buy_stock(self, token: str, game_id: int, stock_name: str, amount: float) -> bool:
+        try:
+            cursor = self.database_connection.cursor()
+
+            # Get the user ID based on the token
+            cursor.execute('SELECT id FROM Users WHERE token = ?', (token,))
+            user_id = cursor.fetchone()[0]
+
+            # Get the user's current liquid cash
+            cursor.execute('SELECT liquid_cash FROM Portfolios WHERE user_id = ? AND game_id = ?', (user_id, game_id))
+            current_liquid_cash = cursor.fetchone()[0]
+
+
+            # Update the user's liquid cash
+            new_liquid_cash = current_liquid_cash - amount
+            cursor.execute('UPDATE Portfolios SET liquid_cash = ? WHERE user_id = ? AND game_id = ?', (new_liquid_cash, user_id, game_id))
+
+            cursor.execute('''
+            INSERT INTO Stocks (portfolio_id, name, value)
+            SELECT p.id, ?, ?
+            FROM Portfolios p
+            WHERE p.user_id = ? AND p.game_id = ?
+            ON CONFLICT(portfolio_id, name)
+            DO UPDATE SET value = value + excluded.value;
+            ''', (stock_name, amount, user_id, game_id))
+
+
+            self.database_connection.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error buying stock: {e}")
+            self.database_connection.rollback()
+            return False
+        
+    
+    def sell_stock(self, token: str, game_id: int, stock_name: str, amount: float) -> bool:
+        try:
+            cursor = self.database_connection.cursor()
+
+            # Get the user ID based on the token
+            cursor.execute('SELECT id FROM Users WHERE token = ?', (token,))
+            user_id = cursor.fetchone()[0]
+
+            # Get the user's current stock value
+            cursor.execute('''
+                SELECT s.value, p.liquid_cash
+                FROM Stocks s
+                JOIN Portfolios p ON s.portfolio_id = p.id
+                WHERE p.user_id = ? AND p.game_id = ? AND s.name = ?
+            ''', (user_id, game_id, stock_name))
+            stock_record = cursor.fetchone()
+            
+            if not stock_record:
+                print("Stock not found in the portfolio.")
+                return False
+            
+            current_stock_value, current_liquid_cash = stock_record
+
+            if current_stock_value < amount:
+                print("Insufficient stock to sell.")
+                return False
+
+            # Update the user's liquid cash
+            new_liquid_cash = current_liquid_cash + amount
+            cursor.execute('UPDATE Portfolios SET liquid_cash = ? WHERE user_id = ? AND game_id = ?', (new_liquid_cash, user_id, game_id))
+
+            # Update or remove the stock in the Stocks table
+            new_stock_value = current_stock_value - amount
+            if new_stock_value > 0:
+                cursor.execute('UPDATE Stocks SET value = ? WHERE portfolio_id = (SELECT id FROM Portfolios WHERE user_id = ? AND game_id = ?) AND name = ?', (new_stock_value, user_id, game_id, stock_name))
+            else:
+                cursor.execute('DELETE FROM Stocks WHERE portfolio_id = (SELECT id FROM Portfolios WHERE user_id = ? AND game_id = ?) AND name = ?', (user_id, game_id, stock_name))
+
+            self.database_connection.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error selling stock: {e}")
+            self.database_connection.rollback()
+            return False
+
+
     
     def get_game_id(self, game_name: str) -> int:
         try:

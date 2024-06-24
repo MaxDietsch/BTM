@@ -19,17 +19,20 @@
         </div>
         <div class="heading">
             <h1 class="title">BTM</h1>
-            <h2 class="welcome-message">Hello, Username</h2>
+            <h2 class="welcome-message"></h2>
+            <div class="action-buttons">
+                <button class="btn" id="search-btn">Search Stock</button>
+            </div>
         </div>
         
         <div class="dashboard">
             <h1 class="balance-title">Total Balance</h1>
             <div class="balance">
-                <span id="total-balance">$0.00</span>
+                <span id="total-balance"></span>
             </div>
             <div class="cash">
                 <h2>Available Liquid Cash</h2>
-                <span id="liquid-cash">$0.00</span>
+                <span id="liquid-cash"></span>
             </div>
             <div class="stocks">
                 <h2>Your Stocks</h2>
@@ -38,7 +41,18 @@
                 </div>
             </div>
         </div>
+        <div id="search-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" id="search-close">&times;</span>
+                <h2>Search Stock</h2>
+                <form id="search-stock-form">
+                    <label for="stock-symbol">Stock Symbol/Name:</label>
+                    <input type="text" id="stock-symbol" name="stock-symbol" required><br>
+                    <button type="submit" class="btn">Submit</button>
+                </form>
+            </div>
+        </div>
     </div>
-    <script src="../js/dashboard.js"></script>
+    <script type="module" src="../js/dashboard.js"></script>
 </body>
 </html>

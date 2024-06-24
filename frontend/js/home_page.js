@@ -1,3 +1,6 @@
+import { IP_ADDRESS } from './IP_ADDRESS.js';
+
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if the user is logged in by checking for the token
     const token = getCookie('token');
@@ -64,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
-            const response = await fetch('http://192.168.178.85:8000/create-game', {
+            const response = await fetch(`http://${IP_ADDRESS}:8000/create-game`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -130,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
-            const response = await fetch('http://192.168.178.85:8000/join-game', {
+            const response = await fetch(`http://${IP_ADDRESS}:8000/join-game`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -203,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 function loadUserItems(token) {
-    fetch('http://192.168.178.85:8000/user-items', {
+    fetch(`http://${IP_ADDRESS}:8000/user-items`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`

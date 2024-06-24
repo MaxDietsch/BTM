@@ -1,3 +1,5 @@
+import { IP_ADDRESS } from './IP_ADDRESS.js';
+
 async function sendRegistrationRequest(username, password) {
     const registrationRequest = {
         username: username,
@@ -5,7 +7,7 @@ async function sendRegistrationRequest(username, password) {
     };
 
     try {
-        const response = await fetch('http://192.168.178.85:8000/register', {
+        const response = await fetch(`http://${IP_ADDRESS}:8000/register`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

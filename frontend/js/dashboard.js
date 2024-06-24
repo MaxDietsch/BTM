@@ -1,3 +1,5 @@
+import { IP_ADDRESS } from './IP_ADDRESS.js';
+
 document.addEventListener('DOMContentLoaded', function() {
     const token = getCookie('token');
 
@@ -23,6 +25,12 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '../landing_page.html';
     });
 
+    const menuIcon = document.querySelector('.menu-icon');
+    const menuContent = document.querySelector('.menu-content');
+
+    menuIcon.addEventListener('click', function() {
+        menuContent.classList.toggle('show');
+    });
 
     // Function to get cookie value by name
     function getCookie(name) {
@@ -32,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Fetch user information from the server
-    fetch('http://192.168.178.85:8000/user-info', {
+    fetch(`http://${IP_ADDRESS}:8000/user-info`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -44,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
     .then(data => {
         // Update welcome message with username
         if (data.username) {
-            document.querySelector('.welcome-message').textContent = `Hello, ${data.username}`;
+            document.querySelector('.welcome-message').textContent = `Hello, ${data.username} \n in Game ${game_name}`;
         } else {
             console.error('Username not found in response');
         }
@@ -84,5 +92,55 @@ document.addEventListener('DOMContentLoaded', function() {
     })
     .catch(error => {
         console.error('Error fetching user information:', error);
+    });
+
+
+    document.getElementById('search-btn').addEventListener('click', function() {
+        document.getElementById('search-modal').style.display = 'block';
+    });
+    
+    // Function to handle the close button in the Buy modal
+    document.getElementById('search-close').addEventListener('click', function() {
+        document.getElementById('search-modal').style.display = 'none';
+    });
+    
+    // Function to handle clicking outside the modal
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('search-modal');
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    });
+    
+    // Function to handle Buy Stock form submission
+    document.getElementById('search-stock-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const stockSymbol = document.getElementById('stock-symbol').value;
+        console.log('Searching stock:', stockSymbol);
+        
+        
+        fetch(`http://${IP_ADDRESS}:8000/find-stock`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ game_name: game_name, stock_name: stockSymbol })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.valid) {
+                window.location.href = `../html/stock_info.html?Game=${encodeURIComponent(game_name)}&Symbol=${encodeURIComponent(stockSymbol)}`;
+            } else {
+                alert('This stock does not exist. Please enter a valid stock symbol.');
+                document.getElementById('search-stock-form').reset();
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching user information:', error);
+        });
+    
+        document.getElementById('search-modal').style.display = 'none';
+        document.getElementById('search-stock-form').reset();
     });
 });

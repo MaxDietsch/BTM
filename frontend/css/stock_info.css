@@ -1,0 +1,302 @@
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    height: 100vh;
+    background-color: #fff;
+    font-family: Arial, sans-serif;
+    color: #000;
+}
+
+.container {
+    position: absolute;
+    text-align: center;
+    width: 60%;
+    max-width: 1200px;
+    height: 100%;
+}
+
+.header {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 5rem;
+}
+
+.menu-icon {
+    font-size: 5rem;
+    cursor: pointer;
+    position: absolute;
+    right: 0; 
+    top: 0;
+}
+
+.menu-icon:hover {
+    cursor: pointer;
+}
+
+.heading {
+    margin-top: 6rem;
+    width: 100%;
+    text-align: center;
+}
+
+.title {
+    margin: 0;
+    font-size: 5rem;
+}
+
+.username {
+    margin: 0;
+    font-size: 2rem;
+}
+
+.stock-info {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.stock-info .stock-name {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.stock-info  {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+}
+
+.user-info {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.cash, .investment, .stock{
+    margin-bottom: 2rem;
+}
+
+.cash h2, .investment h2 , .stock h2{
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.cash span, .investment span, .stock span {
+    font-size: 1.5rem;
+}
+
+.actions {
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.actions .btn {
+    margin: 0 10px;
+}
+
+.stock-overview {
+    margin-top: 2rem;
+    width: 100%;
+    text-align: center;
+}
+
+.chart-container {
+    width: 100%;
+    height: auto;
+}
+
+.interval-buttons {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+.btn {
+    border: 2px solid #000;
+    color: #000;
+    text-decoration: none;
+    font-size: 1rem;
+    background-color: white;
+    transition: background-color 0.3s, color 0.3s;
+    margin: 5px;
+    padding: 10px 20px;
+}
+
+.btn:hover {
+    background-color: #000;
+    color: #fff;
+}
+
+.menu-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #f8f8f8;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    padding: 10px;
+}
+
+.menu-content a {
+    color: black;
+    text-decoration: none;
+    display: block;
+    padding: 10px 20px;
+}
+
+.menu-content a:hover {
+    background-color: #ddd;
+}
+
+.show {
+    display: block;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 5px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    text-align: left;
+}
+
+.modal-content h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.modal-content label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.modal-content input {
+    width: calc(100% - 20px);
+    padding: 10px;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.modal-content .btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 1.2rem;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Media Queries for Responsiveness */
+@media (max-width: 768px) {
+    .title {
+        font-size: 4rem;
+    }
+
+    .username {
+        font-size: 1.5rem;
+    }
+
+    .stock-info .stock-name {
+        font-size: 2rem;
+    }
+
+    .stock-info{
+        font-size: 1.75rem;
+    }
+
+    .cash h2, .investment h2, .stock h2 {
+        font-size: 1.5rem;
+    }
+
+    .cash span, .investment span, .stock span {
+        font-size: 1.25rem;
+    }
+
+    .btn {
+        font-size: 0.875rem;
+        padding: 8px 16px;
+    }
+
+    .menu-icon {
+        font-size: 4rem;
+    }
+
+    .container {
+        width: 90%;
+    }
+}
+
+@media (max-width: 480px) {
+    .title {
+        font-size: 3rem;
+    }
+
+    .username {
+        font-size: 1.25rem;
+    }
+
+    .stock-info .stock-name {
+        font-size: 1.75rem;
+    }
+
+    .stock-info  {
+        font-size: 1.5rem;
+    }
+
+    .cash h2, .investment h2 , .stock h2{
+        font-size: 1.25rem;
+    }
+
+    .cash span, .investment span, .stock span {
+        font-size: 1rem;
+    }
+
+    .btn {
+        font-size: 0.75rem;
+        padding: 6px 12px;
+    }
+
+    .menu-icon {
+        font-size: 3rem;
+    }
+
+    .container {
+        width: 90%;
+    }
+}

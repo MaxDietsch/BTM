@@ -1,7 +1,6 @@
 import http.server
 import socketserver
 import json
-
 from threading import Lock
 import uuid
 from db_handler import DatabaseHandler
@@ -9,7 +8,8 @@ from  stock_api import StockAPI
 
 PORT = 8000
 DIRECTORY = "./frontend"  # The directory where your HTML and other static files are located
-IP_ADDRESS = "192.168.178.85"
+#IP_ADDRESS = "192.168.178.85"
+IP_ADDRESS = "192.168.178.30"
 DB_NAME = "database/btm.db"
 
 
@@ -40,32 +40,140 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
             self.handle_game_join()
         elif self.path == '/user-info':
             self.handle_user_info()
+        elif self.path =='/find-stock':
+            self.handle_find_stock()
+        elif self.path == '/stock-info':
+            self.handle_stock_info()
+        elif self.path == '/buy-stock':
+            self.handle_buy_stock()
         else:
             self.send_response(404)
             self.end_headers()
+        
+    def handle_buy_stock(self) -> None: 
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        data = json.loads(post_data)
+        
+        symbol = data.get('stock_name')
+        game = data.get('game_name')
+        game_id = self.db_handler.get_game_id(game)
+        token = self.handle_auth()
+        amount = int(data.get('amount'))
+        liquid_cash = self.db_handler.get_user_liquid_cash(token)
 
-    def handle_user_info(self) -> None:
+        if liquid_cash < amount: 
+            response = {'success': False, 'msg': 'You have not enough liquid money to invest the entered amount. '}
+            self.send_response(409)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+            return
+        
+        else:
+            with self.lock:
+                result = self.db_handler.buy_stock(token, game_id, symbol, amount)
+            if result:
+                response = {'success': True}
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+            else: 
+                response = {'msg': 'Something went wrong buying your stock. Please try again.'}
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+                
+
+
+    def handle_auth(self) -> str: 
         auth_header = self.headers.get('Authorization')
         token = None
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split("Bearer ")[-1]
         
-        content_length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(content_length)
-        data = json.loads(post_data)
-
         if not token:
             self.send_response(401)
             self.end_headers()
             self.wfile.write(b'Unauthorized')
             return
         
-        user_id = self.db_handler.get_user_id(token)
-        if user_id is None:
+        if not self.db_handler.valid_token(token):
             self.send_response(401)
             self.end_headers()
             self.wfile.write(b'Unauthorized')
             return
+
+        return token 
+    
+    def handle_find_stock(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        data = json.loads(post_data)
+
+        symbol = data.get('stock_name')
+        valid = self.stock_market.check_symbol(symbol)
+        if valid: 
+            response = { 'valid': True}
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+        else: 
+            response = {'valid': False}
+            self.send_response(400)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+
+
+    
+    def handle_stock_info(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        data = json.loads(post_data)
+        
+        symbol = data.get('stock_name')
+        game = data.get('game_name')
+        game_id = self.db_handler.get_game_id(game)
+        token = self.handle_auth()
+        user_name = self.db_handler.get_user_name(token)
+        interval = data.get('interval')
+
+        print(f'Search {symbol} for game {game} of user {user_name}')
+
+        info = self.stock_market.get_stock_history(symbol, interval)
+        info = self.stock_market.format_chart_data(info)
+
+        current_price = self.stock_market.get_stock_price(symbol)
+        liquid_cash = self.db_handler.get_user_liquid_cash(token)
+        investment = self.db_handler.get_user_investment_in_stock(token, game_id, symbol)
+
+        response = {
+                'username': user_name,
+                'stock_name': symbol,
+                'current_price': current_price,
+                'history': info,
+                'liquid_cash': liquid_cash,
+                'current_investment': investment
+        }
+
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        
+
+    def handle_user_info(self) -> None:
+        
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        data = json.loads(post_data)
+
+        token = self.handle_auth()
+        user_id = self.db_handler.get_user_id(token)
         
         username = self.db_handler.get_user_name(token)
         liquid_balance = self.db_handler.get_user_liquid_cash(token)
@@ -170,25 +278,10 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
 
 
     def handle_user_items(self) -> None: 
-        auth_header = self.headers.get('Authorization')
-        token = None
-        if auth_header and auth_header.startswith('Bearer '):
-            token = auth_header.split("Bearer ")[-1]
-
+        token = self.handle_auth()
         print(f"Get user items of {token}")
-
-        if not token:
-            self.send_response(401)
-            self.end_headers()
-            self.wfile.write(b'Unauthorized')
-            return
         
         user_id = self.db_handler.get_user_id(token)
-        if user_id is None:
-            self.send_response(401)
-            self.end_headers()
-            self.wfile.write(b'Unauthorized')
-            return
         
         games_list = self.db_handler.get_user_games(user_id)
         print(f"User items: {games_list}")
