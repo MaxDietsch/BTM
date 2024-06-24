@@ -1,6 +1,7 @@
 import yfinance as yf
 import pandas as pd
-
+from datetime import datetime
+from typing import List
 
 class StockAPI:
     def __init__(self):
@@ -25,8 +26,28 @@ class StockAPI:
             return data['Close'].iloc[-1]
         else:
             return 0
+        
+    
+    def get_stock_history_since_time(self, symbol, date_isoformat) -> List:
+        try:
+            since_date = datetime.fromisoformat('date_isoformat')
 
-    def get_stock_history(self, symbol, interval: str = '5y') -> pd.DataFrame:
+            stock = yf.Ticker(symbol)
+            history = stock.history(start=since_date)
+
+            info = history.reset_index().to_dict(orient='records')
+
+            for record in info:
+                if isinstance(record['Date'], pd.Timestamp):
+                    record['Date'] = record['Date'].strftime('%Y-%m-%d')
+
+            return info
+
+        except Exception as e:
+            print(f"Error fetching stock history: {e}")
+            return []
+
+    def get_stock_history(self, symbol, interval: str = '5y') -> List:
         try:
             stock = yf.Ticker(symbol)
                         

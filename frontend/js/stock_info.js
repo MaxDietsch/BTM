@@ -5,7 +5,19 @@ const homeLink = document.getElementById('home');
 const buyBtn = document.getElementById('buy-btn');
 const buyModal = document.getElementById('buy-modal');
 const buyClose = document.getElementById('buy-close');
-const buyForm = document.getElementById('buy-form');
+const buyNowForm = document.getElementById('buy-now-form');
+const buyNowAmount = document.getElementById('buy-now-amount');
+const buyPriceForm = document.getElementById('buy-at-price-form');
+const buyPriceAmount = document.getElementById('buy-at-price-amount');
+const buyPricePrice = document.getElementById('buy-price');
+const sellBtn = document.getElementById('sell-btn');
+const sellModal = document.getElementById('sell-modal');
+const sellClose = document.getElementById('sell-close');
+const sellNowForm = document.getElementById('sell-now-form');
+const sellNowAmount = document.getElementById('sell-now-amount');
+const sellPriceForm = document.getElementById('sell-at-price-form');
+const sellPriceAmount = document.getElementById('sell-at-price-amount');
+const sellPricePrice = document.getElementById('sell-price');
 const searchBtn = document.getElementById('search-btn');
 const searchModal = document.getElementById('search-modal');
 const searchClose = document.getElementById('search-close');
@@ -118,7 +130,7 @@ function handleBuyFormSubmit(event) {
     const token = getCookie('token');
     const gameName = getUrlParameter('Game');
     const stockSymbol = getUrlParameter('Symbol');
-    const amountToInvest = document.getElementById('buy-amount').value;
+    const amountToInvest = buyNowAmount.value;
 
     if (!token || !gameName || !stockSymbol || !amountToInvest) {
         alert('Missing token, game name, stock symbol, or amount to invest.');
@@ -161,6 +173,173 @@ function handleBuyFormSubmit(event) {
         alert('An error occurred while buying stock. Please try again.');
     });
 }
+
+
+
+function handleSellFormSubmit(event) {
+    event.preventDefault();
+
+    const token = getCookie('token');
+    const gameName = getUrlParameter('Game');
+    const stockSymbol = getUrlParameter('Symbol');
+    const amountToSell = sellNowAmount.value; 
+
+    if (!token || !gameName || !stockSymbol || !amountToSell) {
+        alert('Missing token, game name, stock symbol, or amount to sell.');
+        return;
+    }
+
+    const requestData = {
+        game_name: gameName,
+        stock_name: stockSymbol,
+        amount: amountToSell
+    };
+
+    fetch(`http://${IP_ADDRESS}:8000/sell-stock`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            fetchStockData(getUrlParameter('interval') || '1y')
+            .then(data => {
+                updatePageWithStockData(data);
+                sellModal.style.display = 'none'; // Close the modal
+            });
+        } else {
+            alert('Failed to sell stock: ' + data.msg);
+        }
+    })
+    .catch(error => {
+        console.error('Error selling stock:', error);
+        alert('An error occurred while selling stock. Please try again.');
+    });
+}
+
+
+
+
+
+function handleBuyPriceFormSubmit(event) {
+    event.preventDefault();
+
+    const token = getCookie('token');
+    const gameName = getUrlParameter('Game');
+    const stockSymbol = getUrlParameter('Symbol');
+    const amountToInvest = buyPriceAmount.value;
+    const price = buyPricePrice.value;
+
+    if (!token || !gameName || !stockSymbol || !amountToInvest || !price) {
+        alert('Missing token, game name, stock symbol, or amount to invest.');
+        return;
+    }
+
+    const requestData = {
+        game_name: gameName,
+        stock_name: stockSymbol,
+        amount: amountToInvest,
+        price: price
+    };
+
+    fetch(`http://${IP_ADDRESS}:8000/buy-stock-limit`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            fetchStockData(getUrlParameter('interval') || '1y')
+            .then(data => {
+                updatePageWithStockData(data);
+                buyModal.style.display = 'none'; // Close the modal
+            });
+            alert('Your transaction is stored and will be executed as soon as the stock price drops below your limit.');
+
+        } else {
+            alert('Failed to buy stock: ' + data.msg + 'Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error buying stock:', error);
+        alert('An error occurred while buying stock. Please try again.');
+    });
+}
+
+
+function handleSellPriceFormSubmit(event) {
+    event.preventDefault();
+
+    const token = getCookie('token');
+    const gameName = getUrlParameter('Game');
+    const stockSymbol = getUrlParameter('Symbol');
+    const amountToSell = sellPriceAmount.value;
+    const sellPrice = sellPricePrice.value;
+
+    if (!token || !gameName || !stockSymbol || !amountToSell || !sellPrice) {
+        alert('Missing token, game name, stock symbol, amount to sell, or sell price.');
+        return;
+    }
+
+    const requestData = {
+        game_name: gameName,
+        stock_name: stockSymbol,
+        amount: amountToSell,
+        price: sellPrice
+    };
+
+    fetch(`http://${IP_ADDRESS}:8000/sell-stock-limit`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            fetchStockData(getUrlParameter('interval') || '1y')
+            .then(data => {
+                updatePageWithStockData(data);
+                sellModal.style.display = 'none'; // Close the modal
+            });
+            alert('Your sell limit order is stored and will be executed as soon as the stock price reaches your limit.');
+        } else {
+            alert('Failed to sell stock: ' + data.msg + ' Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error selling stock:', error);
+        alert('An error occurred while selling stock. Please try again.');
+    });
+}
+
+
+
 
 function handleSearchFormSubmit(event) {
     event.preventDefault();
@@ -207,6 +386,10 @@ function handleSearchFormSubmit(event) {
 
 
 document.addEventListener('DOMContentLoaded', function () {
+
+    document.getElementById('defaultOpenBuy').click();
+    document.getElementById('defaultOpenSell').click();
+
     fetchStockData('1y')
     .then(data => {
         updatePageWithStockData(data);
@@ -229,8 +412,23 @@ document.addEventListener('DOMContentLoaded', function () {
             buyModal.style.display = 'none';
         }
     });
-    buyForm.addEventListener('submit', handleBuyFormSubmit);
+    buyNowForm.addEventListener('submit', handleBuyFormSubmit);
+    buyPriceForm.addEventListener('submit', handleBuyPriceFormSubmit);
 
+    
+    sellBtn.addEventListener('click', () => {
+        sellModal.style.display = 'block';
+    });
+    sellClose.addEventListener('click', () => {
+        sellModal.style.display = 'none';
+    });
+    window.addEventListener('click', (event) => {
+        if (event.target === sellModal) {
+            sellModal.style.display = 'none';
+        }
+    });
+    sellNowForm.addEventListener('submit', handleSellFormSubmit);
+    sellPriceForm.addEventListener('submit', handleSellPriceFormSubmit);
 
     // Search functionality
     searchBtn.addEventListener('click', () => {

@@ -5,11 +5,12 @@ from threading import Lock
 import uuid
 from db_handler import DatabaseHandler
 from  stock_api import StockAPI
+from datetime import datetime
 
 PORT = 8000
 DIRECTORY = "./frontend"  # The directory where your HTML and other static files are located
-#IP_ADDRESS = "192.168.178.85"
-IP_ADDRESS = "192.168.178.30"
+IP_ADDRESS = "192.168.178.85"
+#IP_ADDRESS = "192.168.178.30"
 DB_NAME = "database/btm.db"
 
 
@@ -22,6 +23,7 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
 
     def do_GET(self):
+        self.update_transactions()
         if self.path == '/':
             self.path = 'landing_page.html'
         elif self.path == '/user-items':
@@ -30,6 +32,7 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self) -> None:
+        self.update_transactions()
         if self.path == '/register':
             self.handle_register()
         elif self.path == '/login':
@@ -46,9 +49,115 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
             self.handle_stock_info()
         elif self.path == '/buy-stock':
             self.handle_buy_stock()
+        elif self.path == '/sell-stock':
+            self.handle_sell_stock()
+        elif self.path == '/buy-stock-limit':
+            self.handle_stock_transaction(is_buy = True)
+        elif self.path == '/sell-stock-limit':
+            self.handle_stock_transaction(is_buy = False)
         else:
             self.send_response(404)
             self.end_headers()
+    
+    def update_transactions(self) -> None: 
+        transactions = self.db_handler.get_transactions()
+        for transaction in transactions: 
+            hist = self.stock_market.get_stock_history_since_time(transaction[5], transaction[6])
+            for stock_item in hist: 
+                if transaction[7]:
+                    if stock_item['Low'] <= transaction[3]:
+                        shares = transaction[2] // stock_item['Low']
+                        self.db_handler.buy_stock(transaction[1], transaction[4], transaction[5], stock_item['Low'] * shares, shares)
+                        self.db_handler.delete_transaction(transaction[0])
+                        break
+
+                if not transaction[7]:
+                    if stock_item['High'] >= transaction[3]:
+                        shares = transaction[2] // stock_item['High']
+                        self.db_handler.sell_stock(transaction[1], transaction[4], transaction[5], stock_item['High'] * shares, shares)
+                        self.db_handler.delete_transaction(transaction[0])
+                        break
+
+    def handle_sell_stock(self) -> None:
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        data = json.loads(post_data)
+        
+        symbol = data.get('stock_name')
+        game = data.get('game_name')
+        game_id = self.db_handler.get_game_id(game)
+        token = self.handle_auth()
+        amount = int(data.get('amount'))
+        current_holdings = self.db_handler.get_user_investment_in_stock(token, game_id, symbol)
+        current_price = self.stock_market.get_stock_price(symbol)
+        share_holdings = current_holdings // current_price
+        shares = amount // current_price
+        sell_value = shares * current_price
+        print(f'User {token} sells {shares} shares of {symbol} in game {game}.')
+
+        if share_holdings < shares or share_holdings == 0:
+            response = {'success': False, 'msg': 'You do not have enough shares to sell the entered amount.'}
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+            return
+ 
+        with self.lock:
+            result = self.db_handler.sell_stock(token, game_id, symbol, sell_value, shares)
+        
+        if result:
+            response = {'success': True}
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+        else:
+            response = {'success': False, 'msg': 'Something went wrong selling your stock. Please try again.'}
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+
+
+
+    def handle_stock_transaction(self, is_buy: bool) -> None: 
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        data = json.loads(post_data)
+        
+        symbol = data.get('stock_name')
+        game = data.get('game_name')
+        game_id = self.db_handler.get_game_id(game)
+        token = self.handle_auth()
+        amount = int(data.get('amount'))
+        price = float(data.get('price'))
+
+        print(f'User {token} stores transaction ({is_buy}) of {symbol} in game {game}.')
+
+
+        with self.lock: 
+            success = self.db_handler.store_transaction(
+                is_buy = is_buy, 
+                user = token,
+                amount =  amount,
+                price = price,
+                game_id = game_id,
+                symbol = symbol,
+                timestamp = datetime.now().date().isoformat())
+        if success: 
+            response = {'success': True}
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+        else: 
+            response = {'success': False}
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+
         
     def handle_buy_stock(self) -> None: 
         content_length = int(self.headers['Content-Length'])
@@ -61,10 +170,23 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
         token = self.handle_auth()
         amount = int(data.get('amount'))
         liquid_cash = self.db_handler.get_user_liquid_cash(token)
+        current_price = self.stock_market.get_stock_price(symbol)
+        shares = amount // current_price
+        amount = shares * current_price
+        print(f'User {token} buys {shares} shares of {symbol} in game {game}.')
+
 
         if liquid_cash < amount: 
             response = {'success': False, 'msg': 'You have not enough liquid money to invest the entered amount. '}
-            self.send_response(409)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+            return
+
+        if current_price > amount: 
+            response = {'success': False, 'msg': 'You must invest an amount of money that is at least as valuable as 1 share of the stock.'}
+            self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(response).encode('utf-8'))
@@ -72,7 +194,7 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
         
         else:
             with self.lock:
-                result = self.db_handler.buy_stock(token, game_id, symbol, amount)
+                result = self.db_handler.buy_stock(token, game_id, symbol, amount, shares)
             if result:
                 response = {'success': True}
                 self.send_response(200)
@@ -80,7 +202,7 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps(response).encode('utf-8'))
             else: 
-                response = {'msg': 'Something went wrong buying your stock. Please try again.'}
+                response = {'success': False, 'msg': 'Something went wrong buying your stock. Please try again.'}
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
@@ -181,15 +303,17 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
         game_id = self.db_handler.get_game_id(game_name)
         stocks = self.db_handler.get_user_stocks(token, game_id)
         print(f"Get user items of {token} and Game: {game_name}")
+        print(stocks)
 
         stocklist = []
         for stock in stocks: 
-            name, bought, value = stock
+            name, shares, value = stock
             current_price = self.stock_market.get_stock_price(name)
             if current_price is None:
                 continue
-            performance = current_price / bought
-            current_val = performance * value
+
+            current_val = shares * current_price
+            performance = current_val / value - 1
             gain = current_val - value
             stocklist.append({'name': name, 
                               'current_price': current_price,
