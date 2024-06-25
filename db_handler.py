@@ -372,3 +372,113 @@ class DatabaseHandler:
         except sqlite3.Error as e:
             print(f"Error fetching game ID: {e}")
             return None
+    
+    def get_users_in_game(self, game_id: int) -> List[str]:
+        try:
+            cursor = self.database_connection.cursor()
+            query = '''
+                SELECT DISTINCT u.token, u.username
+                FROM Users u
+                INNER JOIN Portfolios p ON u.id = p.user_id
+                WHERE p.game_id = ?
+            '''
+
+            cursor.execute(query, (game_id,))
+            rows = cursor.fetchall()
+
+            return rows
+
+        except sqlite3.Error as e:
+            print(f"Error retrieving users in game: {e}")
+            return []
+        
+    
+    def get_last_update_for_game_id(self, game_id: int) -> Optional[str]:
+        try:
+            cursor = self.database_connection.cursor()
+            query = "SELECT last_update FROM Games WHERE id = ?"
+            cursor.execute(query, (game_id,))
+            result = cursor.fetchone()
+            if result:
+                return result[0]  # Return the first column value (last_update)
+            else:
+                return None
+        except sqlite3.Error as e:
+            print(f"Error retrieving last update for game_id {game_id}: {e}")
+            return None
+    
+    def get_paycheck_interval(self, game_id: int) -> str:
+        try:
+            cursor = self.database_connection.cursor()
+            cursor.execute('SELECT paycheck_frequency FROM Games WHERE id = ?', (game_id,))
+            result = cursor.fetchone()
+
+            if result:
+                return result[0]
+            else:
+                raise ValueError(f"No game found with id {game_id}")
+
+        except sqlite3.Error as e:
+            print(f"SQLite error while fetching paycheck interval: {e}")
+            return None
+
+    def get_paycheck_amount(self, game_id: int) -> str:
+        try:
+            cursor = self.database_connection.cursor()
+            cursor.execute('SELECT paycheck_amount FROM Games WHERE id = ?', (game_id,))
+            result = cursor.fetchone()
+
+            if result:
+                return result[0]
+            else:
+                raise ValueError(f"No game found with id {game_id}")
+
+        except sqlite3.Error as e:
+            print(f"SQLite error while fetching paycheck interval: {e}")
+            return None
+
+
+    def update_cash(self, game_id: int, amount_to_add: float) -> bool:
+        try:
+            cursor = self.database_connection.cursor()
+            
+            # Retrieve all users in the specified game
+            cursor.execute('''
+                SELECT u.id AS user_id, p.id AS portfolio_id
+                FROM Users u
+                INNER JOIN Portfolios p ON u.id = p.user_id
+                WHERE p.game_id = ?
+            ''', (game_id,))
+            
+            rows = cursor.fetchall()
+            
+            if not rows:
+                print(f"No users found for game with id {game_id}")
+                return False
+            
+            # Update liquid cash for each user's portfolio
+            for row in rows:
+                user_id = row[0]  # Accessing user_id via index
+                portfolio_id = row[1]  # Accessing portfolio_id via index
+                
+                # Update liquid cash
+                cursor.execute('''
+                    UPDATE Portfolios
+                    SET liquid_cash = liquid_cash + ?
+                    WHERE id = ?
+                ''', (amount_to_add, portfolio_id))
+            
+            # Update last_update column of the game to current date
+            current_date = datetime.now().date().isoformat()
+            cursor.execute('''
+                UPDATE Games
+                SET last_update = ?
+                WHERE id = ?
+            ''', (current_date, game_id))
+            self.database_connection.commit()
+
+            return True
+        
+        except sqlite3.Error as e:
+            print(f"SQLite error while updating cash: {e}")
+            return False

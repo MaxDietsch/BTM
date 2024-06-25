@@ -5,6 +5,49 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const game_name = urlParams.get('Game');
+    const tbody = document.getElementById('ranking-body');
+
+
+    // Game ranking 
+    fetch(`http://${IP_ADDRESS}:8000/game-ranking`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ game_name: game_name })
+        })
+        .then(response => response.json())
+        .then(data => {
+
+            var position = 1;
+            data.table.forEach(function(user) {
+                // Create a new row element
+                var row = document.createElement('tr');
+
+                var positionCell = document.createElement('td');
+                positionCell.textContent = position++;
+                row.appendChild(positionCell);
+
+                // Create and add cells (td) for each property in the JSON object
+                var nameCell = document.createElement('td');
+                nameCell.textContent = user.user;
+                row.appendChild(nameCell);
+
+                var balanceCell = document.createElement('td');
+                balanceCell.textContent = user.balance.toFixed(2);
+                row.appendChild(balanceCell);
+
+                // Append the row to the table body
+                tbody.appendChild(row);
+            });
+            
+        })
+        .catch(error => {
+        });
+
+
+
 
     if (!token) {
         window.location.href = '../landing_page.html'; // Redirect to login page if not logged in

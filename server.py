@@ -55,9 +55,53 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
             self.handle_stock_transaction(is_buy = True)
         elif self.path == '/sell-stock-limit':
             self.handle_stock_transaction(is_buy = False)
+        elif self.path == '/game-ranking':
+            self.handle_game_ranking()
         else:
             self.send_response(404)
             self.end_headers()
+    
+    def update_paychecks(self, game_id) -> None: 
+        last_up = self.db_handler.get_last_update_for_game_id(game_id)
+        paycheck_interval = self.db_handler.get_paycheck_interval(game_id)
+        paycheck_amount = self.db_handler.get_paycheck_amount(game_id)
+        last_up = datetime.strptime(last_up, '%Y-%m-%d').date()
+        current_date = datetime.now().date()
+        delta = (current_date - last_up).days
+        if delta == 0:
+            return 
+        cash = paycheck_amount * (delta // int(paycheck_interval))
+        with self.lock:
+            self.db_handler.update_cash(game_id, cash )
+            print("Paychecks released in game: {game_id}.")
+
+
+    def handle_game_ranking(self) -> None: 
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        data = json.loads(post_data)
+        
+        game_name = data.get('game_name')
+        game_id = self.db_handler.get_game_id(game_name)
+        self.update_paychecks(game_id)
+        users = self.db_handler.get_users_in_game(game_id)
+        table = []
+        for user in users: 
+            liquid = self.db_handler.get_user_liquid_cash(user[0])
+            stocks = self.db_handler.get_user_stocks(user[0], game_id)
+            portfolio = 0
+            for stock in stocks: 
+                portfolio += self.stock_market.get_stock_price(stock[0]) * stock[1]
+            total = portfolio + liquid
+            table.append({'user': user[1], 'balance': total})
+        table.sort(key = lambda x: -x['balance'])
+        
+        response = {'table': table}
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))        
+
     
     def update_transactions(self) -> None: 
         transactions = self.db_handler.get_transactions()
@@ -66,16 +110,18 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
             for stock_item in hist: 
                 if transaction[7]:
                     if stock_item['Low'] <= transaction[3]:
-                        shares = transaction[2] // stock_item['Low']
-                        self.db_handler.buy_stock(transaction[1], transaction[4], transaction[5], stock_item['Low'] * shares, shares)
+                        shares = transaction[2] // transaction[3]
+                        self.db_handler.buy_stock(transaction[1], transaction[4], transaction[5], transaction[3] * shares, shares)
                         self.db_handler.delete_transaction(transaction[0])
+                        print("Buy transaction done for game: {transaction[4]}, user: {transaction[1]}, symbol: {transaction[5]}}")
                         break
 
                 if not transaction[7]:
                     if stock_item['High'] >= transaction[3]:
-                        shares = transaction[2] // stock_item['High']
-                        self.db_handler.sell_stock(transaction[1], transaction[4], transaction[5], stock_item['High'] * shares, shares)
+                        shares = transaction[2] // transaction[3]
+                        self.db_handler.sell_stock(transaction[1], transaction[4], transaction[5], transaction[3] * shares, shares)
                         self.db_handler.delete_transaction(transaction[0])
+                        print("Sell transaction done for game: {transaction[4]}, user: {transaction[1]}, symbol: {transaction[5]}}")
                         break
 
     def handle_sell_stock(self) -> None:
@@ -298,12 +344,12 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
         user_id = self.db_handler.get_user_id(token)
         
         username = self.db_handler.get_user_name(token)
-        liquid_balance = self.db_handler.get_user_liquid_cash(token)
         game_name = data.get('game_name')
         game_id = self.db_handler.get_game_id(game_name)
+        self.update_paychecks(game_id)
+        liquid_balance = self.db_handler.get_user_liquid_cash(token)
         stocks = self.db_handler.get_user_stocks(token, game_id)
         print(f"Get user items of {token} and Game: {game_name}")
-        print(stocks)
 
         stocklist = []
         for stock in stocks: 
@@ -471,7 +517,6 @@ class BTM_BackEnd(http.server.SimpleHTTPRequestHandler):
         data = json.loads(post_data)
         
         user_token = data.get('user_token')
-        print(user_token)
         user_id = self.db_handler.get_user_id(user_token)
         name = data.get('name')
         password = data.get('password')
